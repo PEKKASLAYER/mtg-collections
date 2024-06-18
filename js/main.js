@@ -165,7 +165,7 @@ function createCollectionElement(row) {
       </div>
     </div>`;
   const collections = docID("collections");
-  collections.insertBefore(article, collections.lastElementChild);
+  collections.appendChild(article);
 }
 
 /* UPDATE PERCENT POSESSED */
