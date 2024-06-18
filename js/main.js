@@ -437,11 +437,11 @@ function createSearchCollectionElement(row, toEnd = false) {
   }
 }
 function updateSearchResults() {
-  const searchValue = docID("searchInput").value;
+  const searchValue = docID("searchInput").value.toLowerCase();
   for (var article of docID("searchCollections").querySelectorAll("article")) {
     let show = false;
     for (var span of article.querySelectorAll("span")) {
-      if (span.innerText.includes(searchValue) || searchValue == "") {
+      if (span.innerText.toLowerCase().includes(searchValue) || searchValue == "") {
         span.setAttribute("visible", "true");
         show = true;
       } else {
