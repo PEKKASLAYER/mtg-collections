@@ -126,7 +126,7 @@ function createCollectionElement(row) {
     </div>
 </div>
     <div class="collectionMenu">
-      <div class="menu-button" onclick="openEditModal(false, this)">
+      <button class="menu-button" onclick="openEditModal(false, this)">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"
@@ -142,8 +142,8 @@ function createCollectionElement(row) {
           <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
           <path d="m15 5 4 4" />
         </svg>
-      </div>
-      <div class="menu-button" onclick="openDeleteCollectionModal(this,false)">
+      </button>
+      <button class="menu-button" onclick="openDeleteCollectionModal(this,false)">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"
@@ -162,7 +162,7 @@ function createCollectionElement(row) {
           <line x1="10" x2="10" y1="11" y2="17" />
           <line x1="14" x2="14" y1="11" y2="17" />
         </svg>
-      </div>
+      </button>
     </div>`;
   const collections = docID("collections");
   collections.appendChild(article);
@@ -441,7 +441,10 @@ function updateSearchResults() {
   for (var article of docID("searchCollections").querySelectorAll("article")) {
     let show = false;
     for (var span of article.querySelectorAll("span")) {
-      if (span.innerText.toLowerCase().includes(searchValue) || searchValue == "") {
+      if (
+        span.innerText.toLowerCase().includes(searchValue) ||
+        searchValue == ""
+      ) {
         span.setAttribute("visible", "true");
         show = true;
       } else {
@@ -680,7 +683,7 @@ async function createNewNote(el) {
 function createNoteHTML(row) {
   docID("notes").innerHTML += `<div class="note" id="note-${row.id}">
  <div class="note-content" contenteditable="true" onkeyup="updateNote(this)">
-     ${HTMLEscape(row.content)}
+     ${HTMLEscape(row.content).replace(/\n/gm, "</br>")}
  </div>
  <div class="menu-button save-note-button" onclick="saveNote(this)" visible="false">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>
@@ -739,9 +742,8 @@ async function saveNote(el) {
   el.parentElement
     .querySelector(".revert-note-button")
     .setAttribute("visible", "false");
-    await sendBroadcast("save-note", { id, content });
+  await sendBroadcast("save-note", { id, content });
   el.setAttribute("aria-busy", "false");
-  
 }
 async function revertNote(el) {
   el.setAttribute("aria-busy", "true");
@@ -757,14 +759,18 @@ async function revertNote(el) {
   el.setAttribute("aria-busy", "false");
 }
 function closeNoteModal(el) {
-    if(el) { el.setAttribute("aria-busy", "true"); }
-    const isEditing = docID("note-modal").querySelector("[visible='true']");
-    if(isEditing) {
-        showNoteNotification("Please save your notes before closing")
-    } else {
-        closeModal("note-modal")
-    }
-    if(el) { el.setAttribute("aria-busy", "false"); }
+  if (el) {
+    el.setAttribute("aria-busy", "true");
+  }
+  const isEditing = docID("note-modal").querySelector("[visible='true']");
+  if (isEditing) {
+    showNoteNotification("Please save your notes before closing");
+  } else {
+    closeModal("note-modal");
+  }
+  if (el) {
+    el.setAttribute("aria-busy", "false");
+  }
 }
 function realtimeNewNoteRecieved(payload) {
   if (docID("note-modal").getAttribute("open") == "true") {
@@ -781,24 +787,86 @@ function realtimeSaveNoteRecieved(payload) {
     const noteContentEl = docID("note-" + payload.id).querySelector(
       ".note-content"
     );
-    const isEditing = docID("note-" + payload.id).querySelector("[visible='true']")
-    if(isEditing) {
-        showNoteNotification("A note that you are editing was updated")
+    const isEditing = docID("note-" + payload.id).querySelector(
+      "[visible='true']"
+    );
+    if (isEditing) {
+      showNoteNotification("A note that you are editing was updated");
     } else {
-        noteContentEl.innerText = payload.content;
+      noteContentEl.innerText = payload.content;
     }
   }
 }
 function showNoteNotification(message) {
-    let card = document.createElement("card");
-    card.classList.add("notification");
-    card.innerText = message;
-    docID("note-notifications").appendChild(card);
-    setTimeout(() => card.remove(), 4500);
+  let card = document.createElement("card");
+  card.classList.add("notification");
+  card.innerText = message;
+  docID("note-notifications").appendChild(card);
+  setTimeout(() => card.remove(), 4500);
+}
+
+/* COPY COLLECTIONS */
+async function selectingCopy(el) {
+  if(el.getAttribute("is-selecting") == "true") {
+    el.setAttribute("aria-busy", "true")
+    let copyingCollections = []
+    document
+      .querySelector(".main-menu")
+      .querySelectorAll(".menu-button")
+      .forEach((button) => (button.disabled = false));
+    docID("collections")
+      .querySelectorAll(".collection")
+      .forEach((colleciton) => {
+        if(colleciton.classList.contains("selected-collection")) {
+          copyingCollections.push(colleciton.getAttribute("collection"))
+        }
+        colleciton.classList.remove("unselected-collection");
+        colleciton.classList.remove("selected-collection");
+        colleciton.removeEventListener("click", copyEventHandler)
+      });
+      let data = await getData();
+      let cards = []
+      for(var collection of data) {
+        if(copyingCollections.includes(collection.collection_name)) {
+          cards = cards.concat(collection.unpossessed_cards)
+        }
+      }
+      const copyContent = cards.map(card => "1 " + card.replace(/\//gm," // ")).join("\n")
+      var input = document.createElement('textarea');
+      input.innerHTML = copyContent;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      showNotification("Collections copied");
+    el.setAttribute("is-selecting", "false")
+    el.setAttribute("aria-busy", "false")
+  } else {
+    showNotification("Select collections to copy, then re-click the button");
+    document
+      .querySelector(".main-menu")
+      .querySelectorAll(".menu-button")
+      .forEach((button) => (button.disabled = true));
+    el.disabled = false;
+    docID("collections")
+      .querySelectorAll(".collection")
+      .forEach((colleciton) => {
+        colleciton.classList.add("unselected-collection");
+        colleciton.addEventListener("click", copyEventHandler)
+      });
+      el.setAttribute("is-selecting","true")
   }
-
-// WHEN ACTIVE OR OPENEING MODLE DISABLE ALL PRECNECE
-
+}
+function copyEventHandler (e) {
+  const el = e.currentTarget
+  if(el.classList.contains("unselected-collection")) {
+    el.classList.remove("unselected-collection");
+    el.classList.add("selected-collection");
+  } else {
+    el.classList.add("unselected-collection");
+    el.classList.remove("selected-collection");
+  }
+}
 // Make functions global for html elements like buttons
 window.selectcolour = selectcolour;
 window.addNewCollection = addNewCollection;
@@ -816,3 +884,4 @@ window.updateNote = updateNote;
 window.saveNote = saveNote;
 window.revertNote = revertNote;
 window.closeNoteModal = closeNoteModal;
+window.selectingCopy = selectingCopy;
