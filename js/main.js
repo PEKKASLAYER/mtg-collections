@@ -608,7 +608,7 @@ async function realtimeSwapRecieved(payload) {
     loadingSpan.remove();
   } else {
     Array.from(spans)
-      .find((span) => span.textContent === textContent)
+      .find((span) => span.textContent.trim() === textContent.trim())
       .remove();
   }
 
@@ -631,7 +631,7 @@ async function realtimeSwapRecieved(payload) {
       loadingSearchSpan.remove();
     } else {
       Array.from(searchSpans)
-        .find((span) => span.textContent === textContent)
+        .find((span) => span.textContent.trim() === textContent.trim())
         .remove();
     }
     const addToSearchCollection = docID(
